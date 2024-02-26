@@ -3,6 +3,7 @@ import PySimpleGUI as sg
 from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
+import webbrowser
 
 import ParkingLot
 
@@ -43,7 +44,7 @@ class ParkingApp:
         sg.theme("LightBlue2")
         self.parking_lot = ParkingLot.ParkingLot()
 
-        menu_def = [['&File', ['About', 'Exit']],
+        menu_def = [['&File', ['About','Document', 'Exit']],
                     ['&Debug', ['Random Car', 'Random History Car']],]
 
         left_col = [[sg.MenubarCustom(menu_def, pad=(0,0), k='-CUST MENUBAR-')],
@@ -104,6 +105,9 @@ class ParkingApp:
                 break
             elif event == 'About':
                 sg.popup('Properties', 'Version 1.0', 'For Python 3.12', 'Based on PySimpleGUI', 'Made by Nattapad & Teerapat','Github : https://github.com/carrot1358/VehicleEntrySystem',button_justification='center', keep_on_top=True)
+            elif event == 'Document':
+                url = 'https://panoramic-file-85b.notion.site/VehicleEntrySystem-Manual-5c05c39cfb6d406da09a17f1a4c27a61'
+                webbrowser.open(url)
             elif event == 'Random History Car':
                 self.parking_lot.carsOut = self.parking_lot.generate_random_cars_out(5)
                 print(self.parking_lot.carsOut)
