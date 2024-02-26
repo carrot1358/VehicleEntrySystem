@@ -229,7 +229,7 @@ class ParkingApp:
 
         img = Image.new('RGB', (200, 50), color=(255, 255, 255))
         d = ImageDraw.Draw(img)
-        fnt = ImageFont.truetype('C:\\Windows\\Fonts\\arialbd.ttf', 12)
+        fnt = ImageFont.truetype('./Font/arial.ttf', 12)
         d.text((10, 10), "Remaining time", font=fnt, fill=(0, 255, 0))
         d.text((10, 30), "Overtime", font=fnt, fill=(255, 0, 0))
         bio = io.BytesIO()
@@ -270,8 +270,8 @@ class ParkingApp:
 
             img = Image.new('RGB', (100, 30), color=(170, 182, 211, 0))
             d = ImageDraw.Draw(img)
-            fnt = ImageFont.truetype('C:\\Windows\\Fonts\\arialbd.ttf', 12)
-            d.text((40, 5), cars_out_keys[i], font=fnt, fill=(0, 0, 0))
+            fnt = ImageFont.truetype('./Font/RSU_BOLD.ttf', 16)
+            d.text((40, 0), cars_out_keys[i], font=fnt, fill=(0, 0, 0))
             img = img.rotate(90, expand=1)
             bio = io.BytesIO()
             img.save(bio, format='PNG')
