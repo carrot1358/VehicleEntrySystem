@@ -42,7 +42,12 @@ class ParkingApp:
     def make_win1(self):
         sg.theme("LightBlue2")
         self.parking_lot = ParkingLot.ParkingLot()
-        left_col = [[sg.Text("ระบบจอดรถ", font=("Helvetica", 20))],
+
+        menu_def = [['&File', ['About', 'Exit']],
+                    ['&Debug', ['Random Car', 'Random History Car']],]
+
+        left_col = [[sg.MenubarCustom(menu_def, pad=(0,0), k='-CUST MENUBAR-')],
+                    [sg.Text("ระบบจอดรถ", font=("Helvetica", 20))],
                     [sg.Text("เลือกไฟล์รูปภาพ:"), sg.InputText(key="filePath", size=(42, 5)), sg.FileBrowse(),
                      sg.Button("สแกนทะเบียน")],
                     [sg.Text("เลขทะเบียน:"), sg.InputText(key="license_plate", size=(37, 5)), sg.Button("รถเข้าจอด"),
@@ -53,7 +58,7 @@ class ParkingApp:
                     [sg.Table(values=[], headings=["ทะเบียนรถ", "เวลาที่เหลือ", "เวลาเกิน"], key="table",
                               justification="center", auto_size_columns=False, col_widths=[20, 20, 20],
                               enable_events=True)],
-                    [sg.Button("Graph"), sg.Button("ประวัติรถเข้า-ออก"), sg.Button("ranCar"), sg.Button("ranCarOld")]]
+                    [sg.Button("Graph"), sg.Button("ประวัติรถเข้า-ออก")]]
         images_col = [[sg.Column([[sg.Text('รายละเอียดรถ:')]], element_justification='c')],
                       [sg.Column([[sg.Text(size=(40, 1), key='-license_plate-')]], element_justification='c')],
                       [sg.Image(key='-IMAGE-')],
@@ -92,6 +97,16 @@ class ParkingApp:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
+            elif event == 'Random Car':
+                self.parking_lot.cars = self.parking_lot.generate_random_cars_out(5)
+                print(self.parking_lot.cars)
+            elif event == 'Exit':
+                break
+            elif event == 'About':
+                sg.popup('Properties', 'Version 1.0', 'For Python 3.12', 'Based on PySimpleGUI', 'Made by Nattapad & Teerapat','Github : https://github.com/carrot1358/VehicleEntrySystem',button_justification='center', keep_on_top=True)
+            elif event == 'Random History Car':
+                self.parking_lot.carsOut = self.parking_lot.generate_random_cars_out(5)
+                print(self.parking_lot.carsOut)
             elif event == "สแกนทะเบียน":
                 if (values["license_plate"] == ""):
                     if (values["filePath"] == ""):
@@ -143,12 +158,6 @@ class ParkingApp:
                     self.draw_parking_history()
                 else:
                     sg.popup("ไม่มีข้อมูลรถเข้า-ออกในระบบ")
-            elif event == "ranCar":
-                self.parking_lot.cars = self.parking_lot.generate_random_cars_out(5)
-                print(self.parking_lot.cars)
-            elif event == "ranCarOld":
-                self.parking_lot.carsOut = self.parking_lot.generate_random_cars_out(5)
-                print(self.parking_lot.carsOut)
 
             self.parking_lot.update_remaining_and_overtime()
             self.update_table()
