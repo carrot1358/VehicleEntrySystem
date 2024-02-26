@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import random
 
-
 class ParkingLot:
     def __init__(self):
         self.cars = {}
@@ -37,6 +36,13 @@ class ParkingLot:
                 self.cars[car]['overtime'] = timedelta(0)
     def get_parked_cars(self):
         return list(self.cars.keys())
+    def get_parked_history(self):
+        parking_history = []
+        for car in self.carsOut:
+            remaining_time = self.carsOut[car]['remaining_time']
+            overtime = self.carsOut[car]['overtime']
+            parking_history.append([car, remaining_time, overtime])
+        return parking_history
     def format_remaining_time(self, remaining_time):
         hours, remainder = divmod(remaining_time.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)

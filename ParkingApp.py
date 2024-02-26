@@ -1,6 +1,6 @@
 import requests
 import PySimpleGUI as sg
-import PIL.Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
 
@@ -10,34 +10,38 @@ BAR_WIDTH = 10  # width of each bar
 BAR_SPACING = 14  # space between each bar
 EDGE_OFFSET = 3  # offset from the left edge for first bar
 GRAPH_SIZE = (500, 500)  # size in pixels
+
+
 def convert_to_bytes(file_or_bytes, resize=None):
     if isinstance(file_or_bytes, str):
-        img = PIL.Image.open(file_or_bytes)
+        img = Image.open(file_or_bytes)
     else:
         try:
-            img = PIL.Image.open(io.BytesIO(base64.b64decode(file_or_bytes)))
+            img = Image.open(io.BytesIO(base64.b64decode(file_or_bytes)))
         except Exception as e:
             dataBytesIO = io.BytesIO(file_or_bytes)
-            img = PIL.Image.open(dataBytesIO)
+            img = Image.open(dataBytesIO)
 
     cur_width, cur_height = img.size
     if resize:
         new_width, new_height = resize
-        scale = min(new_height/cur_height, new_width/cur_width)
-        img = img.resize((int(cur_width*scale), int(cur_height*scale)), PIL.Image.LANCZOS)
+        scale = min(new_height / cur_height, new_width / cur_width)
+        img = img.resize((int(cur_width * scale), int(cur_height * scale)), Image.LANCZOS)
     with io.BytesIO() as bio:
         img.save(bio, format="PNG")
         del img
         return bio.getvalue()
 
+
 class ParkingApp:
     def __init__(self):
         self.window1 = self.make_win1()
         self.window2 = None
+        self.parking_history = []
+
     def make_win1(self):
         sg.theme("LightBlue2")
         self.parking_lot = ParkingLot.ParkingLot()
-
         left_col = [[sg.Text("ระบบจอดรถ", font=("Helvetica", 20))],
                     [sg.Text("เลือกไฟล์รูปภาพ:"), sg.InputText(key="filePath", size=(42, 5)), sg.FileBrowse(),
                      sg.Button("สแกนทะเบียน")],
@@ -49,25 +53,26 @@ class ParkingApp:
                     [sg.Table(values=[], headings=["ทะเบียนรถ", "เวลาที่เหลือ", "เวลาเกิน"], key="table",
                               justification="center", auto_size_columns=False, col_widths=[20, 20, 20],
                               enable_events=True)],
-                    [sg.Button("Graph"),sg.Button("ranCar"),sg.Button("ranCarOld")]]
+                    [sg.Button("Graph"), sg.Button("ประวัติรถเข้า-ออก"), sg.Button("ranCar"), sg.Button("ranCarOld")]]
         images_col = [[sg.Column([[sg.Text('รายละเอียดรถ:')]], element_justification='c')],
                       [sg.Column([[sg.Text(size=(40, 1), key='-license_plate-')]], element_justification='c')],
                       [sg.Image(key='-IMAGE-')],
                       [sg.Button("รถออก", visible=False, key="รถออก")]]
-
         self.layout = [
             [sg.Column(left_col, element_justification='c'),
              sg.VSeperator(),
              sg.Column(images_col, element_justification='c', vertical_alignment='top')]
         ]
         self.window = sg.Window("ระบบจอดรถ", self.layout, finalize=True)
+
     def make_win2(self):
         layout = [[sg.Text('Chart of Cars Out', size=(30, 1), justification='center', font='Helvetica 20')],
-                  [sg.Graph(GRAPH_SIZE, (0, -GRAPH_SIZE[0] // 2), (GRAPH_SIZE[0] // 2, GRAPH_SIZE[1] // 2),
+                  [sg.Graph(GRAPH_SIZE, (0, -380), (GRAPH_SIZE[0] // 2, GRAPH_SIZE[1] // 2),
                             k='-GRAPH-')],
 
                   [sg.Exit()]]
         return sg.Window('Bar Graph', layout, finalize=True)
+
     def run(self):
         while True:
             window, event, values = sg.read_all_windows(timeout=1000)
@@ -79,7 +84,6 @@ class ParkingApp:
                 if self.window2 is None:
                     self.parking_lot.draw_bar_chart(self.parking_lot.carsOut)
                     self.window2 = self.make_win2()
-
             if window == self.window2 and event == sg.WIN_CLOSED:
                 print("window2 closed")
                 self.window2.close()
@@ -88,22 +92,21 @@ class ParkingApp:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
-
             elif event == "สแกนทะเบียน":
-                if(values["license_plate"] == ""):
-                    if(values["filePath"] == ""):
+                if (values["license_plate"] == ""):
+                    if (values["filePath"] == ""):
                         sg.popup("กรุณาเลือกไฟล์รูปภาพ")
                     else:
                         self.scan_license_plate(values)
-
+                else:
+                    sg.popup("กรุณาลบเลขทะเบียนก่อน")
             elif event == "รถเข้าจอด":
-                if(values["license_plate"] == ""):
+                if (values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
                 else:
                     self.add_car(values)
-
             elif event == "รถออก":
-                if(values["license_plate"] == ""):
+                if (values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
                 else:
                     sg.popup(f"รถออกแล้ว {values["license_plate"]}",
@@ -114,7 +117,6 @@ class ParkingApp:
                     self.window['-license_plate-'].update("")
                     self.window['-IMAGE-'].update(data=None)
                     self.remove_car(values)
-
             elif event == "รายละเอียดรถ":
                 if (values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
@@ -130,19 +132,20 @@ class ParkingApp:
                         self.window["รถออก"].update(visible=True)
                     else:
                         sg.popup("ไม่พบเลขทะเบียนในระบบ")
-
             elif event == "table":
                 for i in range(len(values["table"])):
                     print(values["table"][i])
-
             elif event == "Graph":
                 self.window2 = self.make_win2()
                 self.draw_bar_chart(self.parking_lot.carsOut)
-
+            elif event == "ประวัติรถเข้า-ออก":
+                if self.parking_lot.cars or self.parking_lot.carsOut:
+                    self.draw_parking_history()
+                else:
+                    sg.popup("ไม่มีข้อมูลรถเข้า-ออกในระบบ")
             elif event == "ranCar":
                 self.parking_lot.cars = self.parking_lot.generate_random_cars_out(5)
                 print(self.parking_lot.cars)
-
             elif event == "ranCarOld":
                 self.parking_lot.carsOut = self.parking_lot.generate_random_cars_out(5)
                 print(self.parking_lot.carsOut)
@@ -151,6 +154,7 @@ class ParkingApp:
             self.update_table()
 
         self.window.close()
+
     def add_car(self, values):
         license_plate = values["license_plate"]
         hours = int(values["hours"])
@@ -159,7 +163,8 @@ class ParkingApp:
         filePath = values["filePath"]
         self.window["filePath"].update("")
         self.window["license_plate"].update("")
-        self.parking_lot.add_car(license_plate, hours, minutes, seconds,filePath)
+        self.parking_lot.add_car(license_plate, hours, minutes, seconds, filePath)
+
     def remove_car(self, values):
         license_plate = values["license_plate"]
         self.parking_lot.addToCarOut(license_plate,
@@ -168,6 +173,7 @@ class ParkingApp:
                                      self.parking_lot.cars[license_plate]['overtime'],
                                      self.parking_lot.cars[license_plate]['filePath'])
         self.parking_lot.remove_car(license_plate)
+
     def scan_license_plate(self, values):
         url = "https://api.aiforthai.in.th/lpr-v2"
         headers = {
@@ -186,6 +192,7 @@ class ParkingApp:
 
         else:
             sg.popup("ไม่พบเลขทะเบียน")
+
     def update_table(self):
         data = []
         for car in self.parking_lot.get_parked_cars():
@@ -196,9 +203,38 @@ class ParkingApp:
             data.append([car, formatted_remaining_time, formatted_overtime])
 
         self.window["table"].update(values=data)
+
+    def draw_parking_history(self):
+        self.parking_history = self.parking_lot.get_parked_history()
+
+        layout = [
+            [sg.Text('ประวัติรถเข้า-ออก', font=("Helvetica", 20))],
+            [sg.Table(values=self.parking_history, headings=["ทะเบียนรถ", "เวลาที่เหลือ", "เวลาที่เกิน"],
+                      auto_size_columns=False, justification='center', num_rows=min(25, len(self.parking_history)))]
+        ]
+        self.history_window = sg.Window('ประวัติรถเข้า-ออก', layout, finalize=True)
+
+        while True:
+            window, event, values = sg.read_all_windows()
+            #print(f"Event: {window} : {event}")
+            if event == sg.WIN_CLOSED:
+                print("history window closed")
+                self.history_window.close()
+                break
+
     def draw_bar_chart(self, cars_out):
         graph: sg.Graph = self.window2['-GRAPH-']
         graph.erase()
+        cars_out_keys = list(cars_out.keys())
+
+        img = Image.new('RGB', (200, 50), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        fnt = ImageFont.truetype('C:\\Windows\\Fonts\\arialbd.ttf', 12)
+        d.text((10, 10), "Remaining time", font=fnt, fill=(0, 255, 0))
+        d.text((10, 30), "Overtime", font=fnt, fill=(255, 0, 0))
+        bio = io.BytesIO()
+        img.save(bio, format='PNG')
+        graph.draw_image(data=bio.getvalue(), location=(GRAPH_SIZE[0] // 2 - 100, GRAPH_SIZE[1] // 2 - 50))
 
         for i, car in enumerate(cars_out.values()):
             try:
@@ -220,8 +256,6 @@ class ParkingApp:
                 h, m, s = map(int, str(car["overtime"]).split(":"))
                 overtime_in_seconds = (h * 3600 + m * 60 + s) / 250
 
-
-
             graph.draw_rectangle(top_left=(i * BAR_SPACING + EDGE_OFFSET, -GRAPH_SIZE[0] // 2),
                                  bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
                                                -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds),
@@ -232,3 +266,13 @@ class ParkingApp:
                 bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
                               -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds + overtime_in_seconds),
                 fill_color='red')
+
+
+            img = Image.new('RGB', (100, 30), color=(170, 182, 211, 0))
+            d = ImageDraw.Draw(img)
+            fnt = ImageFont.truetype('C:\\Windows\\Fonts\\arialbd.ttf', 12)
+            d.text((40, 5), cars_out_keys[i], font=fnt, fill=(0, 0, 0))
+            img = img.rotate(90, expand=1)
+            bio = io.BytesIO()
+            img.save(bio, format='PNG')
+            graph.draw_image(data=bio.getvalue(), location=(i * BAR_SPACING + EDGE_OFFSET, -GRAPH_SIZE[0] // 2))
