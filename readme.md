@@ -5,3 +5,5 @@
 - clone this repository `git clone https://github.com/carrot1358/VehicleEntrySystem.git`
 - run `pip install -r requirements.txt` to install all dependencies
 - run `python main.py` to start the program
+## Preview:
+![img.png](img.png)
