@@ -15,6 +15,12 @@ class ParkingLot:
             'filePath': filePath
         }
         print(self.cars)
+    def editExpiration_time(self, license_plate, hours, minutes, seconds):
+        now = datetime.now()
+        expiration_time = now + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+        self.cars[license_plate]['expiration_time'] = expiration_time
+        self.cars[license_plate]['remaining_time'] = expiration_time - now
+
     def remove_car(self, license_plate):
         self.cars.pop(license_plate)
     def addToCarOut(self,license_plate,expiration_time,remaining_time,overtime,filePath):

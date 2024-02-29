@@ -52,7 +52,7 @@ class ParkingApp:
                     [sg.Text("เลือกไฟล์รูปภาพ:"), sg.InputText(key="filePath", size=(42, 5)), sg.FileBrowse(),
                      sg.Button("สแกนทะเบียน")],
                     [sg.Text("เลขทะเบียน:"), sg.InputText(key="license_plate", size=(37, 5)), sg.Button("รถเข้าจอด"),
-                     sg.Button("รายละเอียดรถ")],
+                     sg.Button("แก้ไข"),sg.Button("รายละเอียดรถ")],
                     [sg.Text("เวลา :"), sg.InputText(key="hours", size=(10, 5), default_text="0"), sg.Text("ชม"),
                      sg.InputText(key="minutes", size=(10, 5), default_text="0"), sg.Text("นาที"),
                      sg.InputText(key="seconds", size=(10, 5), default_text="0"), sg.Text("วินาที")],
@@ -101,6 +101,7 @@ class ParkingApp:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
+
             elif event == 'Sort by Remaining Time':
                 self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
                                                        key=lambda item: item[1]['remaining_time'],
@@ -134,8 +135,31 @@ class ParkingApp:
                         self.scan_license_plate(values)
                 else:
                     sg.popup("กรุณาลบเลขทะเบียนก่อน")
+            elif event == "แก้ไข":
+                if(values["license_plate"] == ""):
+                    sg.popup("กรุณากรอกเลขทะเบียน")
+                elif (values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
+                    sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
+                    window["hours"].update('0')
+                    window["minutes"].update('0')
+                    window["seconds"].update('0')
+                elif (values["hours"] > "24" or values["minutes"] > "60" or values["seconds"] > "60"):
+                    sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
+                    window["hours"].update('0')
+                    window["minutes"].update('0')
+                    window["seconds"].update('0')
+                elif (values["hours"] == "0" and values["minutes"] == "0" and values["seconds"] == "0"):
+                    sg.popup("กรุณากรอกเวลา")
+                else:
+                    self.parking_lot.editExpiration_time(values["license_plate"], int(values["hours"]), int(values["minutes"]), int(values["seconds"]))
+                    sg.popup("แก้ไขเวลาสำเร็จ")
+                    window["license_plate"].update("")
+
 
             elif event == "รถเข้าจอด":
+                # if license_plate already exists
+                if (values["license_plate"] in self.parking_lot.cars):
+                    sg.popup("รถทะเบียนนี้อยู่ในระบบแล้ว")
                 if(values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
                     sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
                     window["hours"].update('0')
@@ -150,7 +174,6 @@ class ParkingApp:
                     window["seconds"].update('0')
                 elif (values["hours"] == "0" and values["minutes"] == "0" and values["seconds"] == "0"):
                     sg.popup("กรุณากรอกเวลา")
-
                 else:
                     self.add_car(values)
             elif event == "รถออก":
