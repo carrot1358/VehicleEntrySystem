@@ -36,6 +36,8 @@ def convert_to_bytes(file_or_bytes, resize=None):
 
 class ParkingApp:
     def __init__(self):
+        self.current_page = 0
+        self.items_per_page = 10
         self.window1 = self.make_win1()
         self.window2 = None
         self.parking_history = []
@@ -46,7 +48,6 @@ class ParkingApp:
 
         menu_def = [['&File', ['About','Document', 'Exit']],
                     ['&Debug', ['Random Car', 'Random History Car']],]
-
         left_col = [[sg.MenubarCustom(menu_def, pad=(0,0), k='-CUST MENUBAR-')],
                     [sg.Text("ระบบจอดรถ", font=("Helvetica", 20))],
                     [sg.Text("เลือกไฟล์รูปภาพ:"), sg.InputText(key="filePath", size=(42, 5)), sg.FileBrowse(),
@@ -77,7 +78,7 @@ class ParkingApp:
                             k='-GRAPH-')],
                   [sg.Button('Sort by Remaining Time'), sg.Button('Sort by Overtime')],
 
-                  [sg.Exit(), sg.Button('Next')]]
+                  [sg.Exit(), sg.Button('Next'), sg.Button('Previous')]]
         self.window2 =  sg.Window('Bar Graph', layout, finalize=True)
         return self.window2
 
@@ -101,7 +102,6 @@ class ParkingApp:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
-
             elif event == 'Sort by Remaining Time':
                 self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
                                                        key=lambda item: item[1]['remaining_time'],
@@ -154,8 +154,6 @@ class ParkingApp:
                     self.parking_lot.editExpiration_time(values["license_plate"], int(values["hours"]), int(values["minutes"]), int(values["seconds"]))
                     sg.popup("แก้ไขเวลาสำเร็จ")
                     window["license_plate"].update("")
-
-
             elif event == "รถเข้าจอด":
                 # if license_plate already exists
                 if (values["license_plate"] in self.parking_lot.cars):
@@ -215,7 +213,17 @@ class ParkingApp:
                 else:
                     sg.popup("ไม่มีข้อมูลรถเข้า-ออกในระบบ")
             elif event == "Next":
-                pass
+                if self.current_page < self.get_max_page() - 1:
+                    self.current_page += 1
+                    self.draw_bar_chart(self.parking_lot.carsOut)
+                else:
+                    sg.popup("ไม่มีหน้าถัดไปแล้ว")
+            elif event == "Previous":
+                if self.current_page > 0:
+                    self.current_page -= 1
+                    self.draw_bar_chart(self.parking_lot.carsOut)
+                else:
+                    sg.popup("นี้คือหน้าแรกแล้ว")
 
 
             self.parking_lot.update_remaining_and_overtime()
@@ -241,6 +249,13 @@ class ParkingApp:
                                      self.parking_lot.cars[license_plate]['overtime'],
                                      self.parking_lot.cars[license_plate]['filePath'])
         self.parking_lot.remove_car(license_plate)
+
+    def get_max_page(self):
+        total_items = len(self.parking_lot.carsOut)
+        max_page = total_items // self.items_per_page
+        if total_items % self.items_per_page != 0:
+            max_page += 1
+        return max_page
 
     def scan_license_plate(self, values):
         url = "https://api.aiforthai.in.th/lpr-v2"
@@ -291,9 +306,16 @@ class ParkingApp:
                 break
 
     def draw_bar_chart(self, cars_out, isShowRemainingTime=True, isShowOvertime=True):
+        # Calculate start and end indices for the items on the current page
+        start_index = self.current_page * self.items_per_page
+        end_index = start_index + self.items_per_page
+
+        # Get only the items for the current page
+        cars_out_page = dict(list(cars_out.items())[start_index:end_index])
+
         graph: sg.Graph = self.window2['-GRAPH-']
         graph.erase()
-        cars_out_keys = list(cars_out.keys())
+        cars_out_keys = list(cars_out_page.keys())
 
         img = Image.new('RGB', (200, 50), color=(255, 255, 255))
         d = ImageDraw.Draw(img)
@@ -319,7 +341,7 @@ class ParkingApp:
                 graph.draw_line((EDGE_OFFSET + RIGHT_SHIFT - 16, -y), (EDGE_OFFSET + RIGHT_SHIFT -13, -y))
 
 
-        for i, car in enumerate(cars_out.values()):
+        for i, car in enumerate(cars_out_page.values()):
             try:
                 total_seconds = int(car["remaining_time"].total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)

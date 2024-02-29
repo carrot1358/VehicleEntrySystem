@@ -20,7 +20,6 @@ class ParkingLot:
         expiration_time = now + timedelta(hours=hours, minutes=minutes, seconds=seconds)
         self.cars[license_plate]['expiration_time'] = expiration_time
         self.cars[license_plate]['remaining_time'] = expiration_time - now
-
     def remove_car(self, license_plate):
         self.cars.pop(license_plate)
     def addToCarOut(self,license_plate,expiration_time,remaining_time,overtime,filePath):
@@ -40,6 +39,8 @@ class ParkingLot:
             else:
                 self.cars[car]['remaining_time'] = remaining_time
                 self.cars[car]['overtime'] = timedelta(0)
+
+
     def get_parked_cars(self):
         return list(self.cars.keys())
     def get_parked_history(self):
