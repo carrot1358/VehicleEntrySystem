@@ -192,8 +192,8 @@ class ParkingApp:
                     window["seconds"].update('0')
                 elif (values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
-                elif(values["hours"] > "24" or values["minutes"] > "60" or values["seconds"] > "60"):
-                    sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
+                elif(int(values["hours"]) > 24 or int(values["minutes"]) > 60 or int(values["seconds"]) > 60):
+                    sg.popup("กรุณากรอกเวลาไม่เกิน 24 ชม. 60 นาที 60 วินาที")
                     window["hours"].update('0')
                     window["minutes"].update('0')
                     window["seconds"].update('0')
