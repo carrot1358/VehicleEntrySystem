@@ -109,7 +109,6 @@ class ParkingApp:
                                                        key=lambda item: item[1]['overtime'],
                                                        reverse=True))
                 self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=False, isShowOvertime=True)
-
             elif event == 'Exit':
                 break
             elif event == 'About':
@@ -118,20 +117,42 @@ class ParkingApp:
                 url = 'https://panoramic-file-85b.notion.site/VehicleEntrySystem-Manual-5c05c39cfb6d406da09a17f1a4c27a61'
                 webbrowser.open(url)
             elif event == 'Random Car':
-                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
-                self.parking_lot.generate_random_cars(int(num_cars))
-                print(self.parking_lot.cars)
+                while True:
+                    num_cars = sg.popup_get_text('ใส่จำนวนรถที่ต้องการเพิ่ม', default_text='5', )
+                    if num_cars == None:
+                        break
+                    elif (num_cars.isnumeric() == False):
+                        sg.popup("กรุณาใส่ตัวเลข")
+                    elif (int(num_cars) > 1000):
+                        sg.popup("กรุณาใส่ตัวเลขไม่เกิน 1000")
+                    else:
+                        break
+                if num_cars != None:
+                    self.parking_lot.generate_random_cars(int(num_cars))
+                    print(self.parking_lot.carsOut)
             elif event == 'Random History Car':
-                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
-                self.parking_lot.generate_random_cars_out(int(num_cars))
-                print(self.parking_lot.carsOut)
+                while True:
+                    num_cars = sg.popup_get_text('ใส่จำนวนรถที่ต้องการเพิ่ม', default_text='5', )
+                    if num_cars == None:
+                        break
+                    elif (num_cars.isnumeric() == False):
+                        sg.popup("กรุณาใส่ตัวเลข")
+                    elif(int(num_cars) > 1000):
+                        sg.popup("กรุณาใส่ตัวเลขไม่เกิน 1000")
+                    else:
+                        break
+                if num_cars != None:
+                    self.parking_lot.generate_random_cars_out(int(num_cars))
+                    print(self.parking_lot.carsOut)
             elif event == 'Remove Debug Car':
                 self.parking_lot.remove_Debugcar()
             elif event == "สแกนทะเบียน":
                 if (values["license_plate"] == ""):
                     if (values["filePath"] == ""):
                         sg.popup("กรุณาเลือกไฟล์รูปภาพ")
-                    else:
+                    elif (values["filePath"][-3:] != "jpg" and values["filePath"][-3:] != "png"):
+                        sg.popup("ไฟล์รูปภาพไม่ถูกต้อง")
+                    elif (values["filePath"][-3:] == "jpg" or values["filePath"][-3:] == "png"):
                         self.scan_license_plate(values)
                 else:
                     sg.popup("กรุณาลบเลขทะเบียนก่อน")
