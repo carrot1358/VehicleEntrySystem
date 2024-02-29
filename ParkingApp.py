@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import requests
 import PySimpleGUI as sg
 from PIL import Image, ImageDraw, ImageFont
@@ -100,11 +102,23 @@ class ParkingApp:
                 self.window2.close()
                 self.window2 = None
             elif event == 'Sort by Remaining Time':
+                for car in self.parking_lot.carsOut.values():
+                    if isinstance(car['remaining_time'], str):
+                        hours, minutes, seconds = map(int, car['remaining_time'].split(':'))
+                        car['remaining_time'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
                 self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
                                                        key=lambda item: item[1]['remaining_time'],
                                                        reverse=True))
                 self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=True, isShowOvertime=False)
+                # self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
+                #                                        key=lambda item: item[1]['remaining_time'],
+                #                                        reverse=True))
+                # self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=True, isShowOvertime=False)
             elif event == 'Sort by Overtime':
+                for car in self.parking_lot.carsOut.values():
+                    if isinstance(car['overtime'], str):
+                        hours, minutes, seconds = map(int, car['overtime'].split(':'))
+                        car['overtime'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
                 self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
                                                        key=lambda item: item[1]['overtime'],
                                                        reverse=True))
