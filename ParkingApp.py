@@ -75,11 +75,14 @@ class ParkingApp:
         layout = [[sg.Text('Chart of Cars Out', size=(30, 1), justification='center', font='Helvetica 20')],
                   [sg.Graph(GRAPH_SIZE, (0, -380), (GRAPH_SIZE[0] // 2, GRAPH_SIZE[1] // 2),
                             k='-GRAPH-')],
+                  [sg.Button('Sort by Remaining Time'), sg.Button('Sort by Overtime')],
 
-                  [sg.Exit()]]
-        return sg.Window('Bar Graph', layout, finalize=True)
+                  [sg.Exit(), sg.Button('Next')]]
+        self.window2 =  sg.Window('Bar Graph', layout, finalize=True)
+        return self.window2
 
     def run(self):
+        page = 1
         while True:
             window, event, values = sg.read_all_windows(timeout=1000)
             # print(f"Event: {window} : {event}")
@@ -98,8 +101,19 @@ class ParkingApp:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
+            elif event == 'Sort by Remaining Time':
+                self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
+                                                       key=lambda item: item[1]['remaining_time'],
+                                                       reverse=True))
+                self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=True, isShowOvertime=False)
+            elif event == 'Sort by Overtime':
+                self.parking_lot.carsOut = dict(sorted(self.parking_lot.carsOut.items(),
+                                                       key=lambda item: item[1]['overtime'],
+                                                       reverse=True))
+                self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=False, isShowOvertime=True)
             elif event == 'Random Car':
-                self.parking_lot.cars = self.parking_lot.generate_random_cars_out(5)
+                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
+                self.parking_lot.generate_random_cars_out(int(num_cars))
                 print(self.parking_lot.cars)
             elif event == 'Exit':
                 break
@@ -109,7 +123,8 @@ class ParkingApp:
                 url = 'https://panoramic-file-85b.notion.site/VehicleEntrySystem-Manual-5c05c39cfb6d406da09a17f1a4c27a61'
                 webbrowser.open(url)
             elif event == 'Random History Car':
-                self.parking_lot.carsOut = self.parking_lot.generate_random_cars_out(5)
+                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
+                self.parking_lot.generate_random_cars_out(int(num_cars))
                 print(self.parking_lot.carsOut)
             elif event == "สแกนทะเบียน":
                 if (values["license_plate"] == ""):
@@ -119,9 +134,23 @@ class ParkingApp:
                         self.scan_license_plate(values)
                 else:
                     sg.popup("กรุณาลบเลขทะเบียนก่อน")
+
             elif event == "รถเข้าจอด":
-                if (values["license_plate"] == ""):
+                if(values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
+                    sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
+                    window["hours"].update('0')
+                    window["minutes"].update('0')
+                    window["seconds"].update('0')
+                elif (values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
+                elif(values["hours"] > "24" or values["minutes"] > "60" or values["seconds"] > "60"):
+                    sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
+                    window["hours"].update('0')
+                    window["minutes"].update('0')
+                    window["seconds"].update('0')
+                elif (values["hours"] == "0" and values["minutes"] == "0" and values["seconds"] == "0"):
+                    sg.popup("กรุณากรอกเวลา")
+
                 else:
                     self.add_car(values)
             elif event == "รถออก":
@@ -162,6 +191,9 @@ class ParkingApp:
                     self.draw_parking_history()
                 else:
                     sg.popup("ไม่มีข้อมูลรถเข้า-ออกในระบบ")
+            elif event == "Next":
+                pass
+
 
             self.parking_lot.update_remaining_and_overtime()
             self.update_table()
@@ -235,7 +267,7 @@ class ParkingApp:
                 self.history_window.close()
                 break
 
-    def draw_bar_chart(self, cars_out):
+    def draw_bar_chart(self, cars_out, isShowRemainingTime=True, isShowOvertime=True):
         graph: sg.Graph = self.window2['-GRAPH-']
         graph.erase()
         cars_out_keys = list(cars_out.keys())
@@ -249,36 +281,61 @@ class ParkingApp:
         img.save(bio, format='PNG')
         graph.draw_image(data=bio.getvalue(), location=(GRAPH_SIZE[0] // 2 - 100, GRAPH_SIZE[1] // 2 - 50))
 
+        # Define a constant for the right shift
+        RIGHT_SHIFT = 20
+
+        # Draw y-axis line
+        graph.draw_line((EDGE_OFFSET + (RIGHT_SHIFT/2)-5, (-GRAPH_SIZE[0] // 2)-5),
+                        (EDGE_OFFSET + (RIGHT_SHIFT/2)-5, (GRAPH_SIZE[1] // 2)))
+
+        SPACING_FACTOR = 1.0  # adjust this value to increase or decrease the space between labels
+        for i in range(25):  # 24 hours plus 0
+            if(i % 2 == 0):
+                y = GRAPH_SIZE[1] // 2 - i * (GRAPH_SIZE[1] // 2) / 24 * SPACING_FACTOR
+                graph.draw_text(str(i), (EDGE_OFFSET + RIGHT_SHIFT - 20, -y), color='black')
+                graph.draw_line((EDGE_OFFSET + RIGHT_SHIFT - 16, -y), (EDGE_OFFSET + RIGHT_SHIFT -13, -y))
+
+
         for i, car in enumerate(cars_out.values()):
             try:
                 total_seconds = int(car["remaining_time"].total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 h, m, s = map(int, f"{hours}:{minutes}:{seconds}".split(":"))
-                remaining_time_in_seconds = (h * 3600 + m * 60 + s) / 250
+                remaining_time_in_seconds = (h * 3600 + m * 60 + s) / (24 * 3600) * GRAPH_SIZE[1] // 2
 
                 total_seconds = int(car["overtime"].total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 h, m, s = map(int, f"{hours}:{minutes}:{seconds}".split(":"))
-                overtime_in_seconds = (h * 3600 + m * 60 + s) / 250
+                overtime_in_seconds = (h * 3600 + m * 60 + s) / (24 * 3600) * GRAPH_SIZE[1] // 2
             except:
                 h, m, s = map(int, str(car["remaining_time"]).split(":"))
-                remaining_time_in_seconds = (h * 3600 + m * 60 + s) / 250
+                remaining_time_in_seconds = (h * 3600 + m * 60 + s) / (24 * 3600) * GRAPH_SIZE[1] // 2
 
                 h, m, s = map(int, str(car["overtime"]).split(":"))
-                overtime_in_seconds = (h * 3600 + m * 60 + s) / 250
+                overtime_in_seconds = (h * 3600 + m * 60 + s) / (24 * 3600) * GRAPH_SIZE[1] // 2
 
-            graph.draw_rectangle(top_left=(i * BAR_SPACING + EDGE_OFFSET, -GRAPH_SIZE[0] // 2),
+
+            if(isShowRemainingTime):
+                graph.draw_rectangle(top_left=(i * BAR_SPACING + EDGE_OFFSET + RIGHT_SHIFT, -GRAPH_SIZE[0] // 2),
                                  bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
                                                -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds),
                                  fill_color='green')
+            if(isShowOvertime):
+                if(not isShowRemainingTime):
 
-            graph.draw_rectangle(
-                top_left=(i * BAR_SPACING + EDGE_OFFSET, -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds),
-                bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
-                              -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds + overtime_in_seconds),
-                fill_color='red')
+                    graph.draw_rectangle(
+                        top_left=(i * BAR_SPACING + EDGE_OFFSET + RIGHT_SHIFT, -GRAPH_SIZE[0] // 2 ),
+                        bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
+                                      -GRAPH_SIZE[0] // 2  + overtime_in_seconds),
+                        fill_color='red')
+                else:
+                    graph.draw_rectangle(
+                        top_left=(i * BAR_SPACING + EDGE_OFFSET + RIGHT_SHIFT, -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds),
+                        bottom_right=(i * BAR_SPACING + EDGE_OFFSET + BAR_WIDTH,
+                                      -GRAPH_SIZE[0] // 2 + remaining_time_in_seconds + overtime_in_seconds),
+                        fill_color='red')
 
 
             img = Image.new('RGB', (100, 30), color=(170, 182, 211, 0))
@@ -288,4 +345,5 @@ class ParkingApp:
             img = img.rotate(90, expand=1)
             bio = io.BytesIO()
             img.save(bio, format='PNG')
-            graph.draw_image(data=bio.getvalue(), location=(i * BAR_SPACING + EDGE_OFFSET, -GRAPH_SIZE[0] // 2))
+            graph.draw_image(data=bio.getvalue(), location=(i * BAR_SPACING + EDGE_OFFSET + RIGHT_SHIFT/2 , -GRAPH_SIZE[0] // 2))
+

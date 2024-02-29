@@ -75,4 +75,4 @@ class ParkingLot:
             }
             car[license_plate] = car_data
 
-        return car
+        self.carsOut.update(car)
