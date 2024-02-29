@@ -4,14 +4,12 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
 import webbrowser
-
 import ParkingLot
 
 BAR_WIDTH = 10  # width of each bar
 BAR_SPACING = 14  # space between each bar
 EDGE_OFFSET = 3  # offset from the left edge for first bar
 GRAPH_SIZE = (500, 500)  # size in pixels
-
 
 def convert_to_bytes(file_or_bytes, resize=None):
     if isinstance(file_or_bytes, str):
@@ -33,7 +31,6 @@ def convert_to_bytes(file_or_bytes, resize=None):
         del img
         return bio.getvalue()
 
-
 class ParkingApp:
     def __init__(self):
         self.current_page = 0
@@ -47,7 +44,7 @@ class ParkingApp:
         self.parking_lot = ParkingLot.ParkingLot()
 
         menu_def = [['&File', ['About','Document', 'Exit']],
-                    ['&Debug', ['Random Car', 'Random History Car']],]
+                    ['&Debug', ['Random Car', 'Random History Car','Remove Debug Car']],]
         left_col = [[sg.MenubarCustom(menu_def, pad=(0,0), k='-CUST MENUBAR-')],
                     [sg.Text("ระบบจอดรถ", font=("Helvetica", 20))],
                     [sg.Text("เลือกไฟล์รูปภาพ:"), sg.InputText(key="filePath", size=(42, 5)), sg.FileBrowse(),
@@ -90,15 +87,15 @@ class ParkingApp:
             if window == self.window and event == sg.WIN_CLOSED:
                 print("window1 closed")
                 break
-            if window == self.window1 and event == "Graph":
+            elif window == self.window1 and event == "Graph":
                 if self.window2 is None:
                     self.parking_lot.draw_bar_chart(self.parking_lot.carsOut)
                     self.window2 = self.make_win2()
-            if window == self.window2 and event == sg.WIN_CLOSED:
+            elif window == self.window2 and event == sg.WIN_CLOSED:
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
-            if window == self.window2 and event == "Exit":
+            elif window == self.window2 and event == "Exit":
                 print("window2 closed")
                 self.window2.close()
                 self.window2 = None
@@ -112,10 +109,7 @@ class ParkingApp:
                                                        key=lambda item: item[1]['overtime'],
                                                        reverse=True))
                 self.draw_bar_chart(self.parking_lot.carsOut, isShowRemainingTime=False, isShowOvertime=True)
-            elif event == 'Random Car':
-                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
-                self.parking_lot.generate_random_cars_out(int(num_cars))
-                print(self.parking_lot.cars)
+
             elif event == 'Exit':
                 break
             elif event == 'About':
@@ -123,10 +117,16 @@ class ParkingApp:
             elif event == 'Document':
                 url = 'https://panoramic-file-85b.notion.site/VehicleEntrySystem-Manual-5c05c39cfb6d406da09a17f1a4c27a61'
                 webbrowser.open(url)
+            elif event == 'Random Car':
+                num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
+                self.parking_lot.generate_random_cars(int(num_cars))
+                print(self.parking_lot.cars)
             elif event == 'Random History Car':
                 num_cars = sg.popup_get_text('Enter the number of cars to be added', default_text='5')
                 self.parking_lot.generate_random_cars_out(int(num_cars))
                 print(self.parking_lot.carsOut)
+            elif event == 'Remove Debug Car':
+                self.parking_lot.remove_Debugcar()
             elif event == "สแกนทะเบียน":
                 if (values["license_plate"] == ""):
                     if (values["filePath"] == ""):
@@ -138,6 +138,8 @@ class ParkingApp:
             elif event == "แก้ไข":
                 if(values["license_plate"] == ""):
                     sg.popup("กรุณากรอกเลขทะเบียน")
+                elif(values["license_plate"] not in self.parking_lot.cars):
+                    sg.popup("ไม่พบเลขทะเบียนในระบบ")
                 elif (values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
                     sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
                     window["hours"].update('0')
@@ -155,10 +157,14 @@ class ParkingApp:
                     sg.popup("แก้ไขเวลาสำเร็จ")
                     window["license_plate"].update("")
             elif event == "รถเข้าจอด":
-                # if license_plate already exists
-                if (values["license_plate"] in self.parking_lot.cars):
+                # if lecense plate is special character
+                if(values["license_plate"].isalnum() == False):
+                    sg.popup("เลขทะเบียนไม่สามารถใส่อักษรพิเศษได้")
+                elif(len(values["license_plate"]) > 8):
+                    sg.popup("เลขทะเบียนไมjควรเกิน 8 ตัวอักษร")
+                elif (values["license_plate"] in self.parking_lot.cars):
                     sg.popup("รถทะเบียนนี้อยู่ในระบบแล้ว")
-                if(values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
+                elif(values["hours"].isnumeric() == False or values["minutes"].isnumeric() == False or values["seconds"].isnumeric() == False):
                     sg.popup("กรุณากรอกเวลาให้ถูกต้อง")
                     window["hours"].update('0')
                     window["minutes"].update('0')
@@ -317,7 +323,7 @@ class ParkingApp:
         graph.erase()
         cars_out_keys = list(cars_out_page.keys())
 
-        img = Image.new('RGB', (200, 50), color=(255, 255, 255))
+        img = Image.new('RGB', (200, 50), color=(170, 182, 211))
         d = ImageDraw.Draw(img)
         fnt = ImageFont.truetype('./Font/arial.ttf', 12)
         d.text((10, 10), "Remaining time", font=fnt, fill=(0, 255, 0))

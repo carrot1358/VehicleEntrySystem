@@ -39,8 +39,6 @@ class ParkingLot:
             else:
                 self.cars[car]['remaining_time'] = remaining_time
                 self.cars[car]['overtime'] = timedelta(0)
-
-
     def get_parked_cars(self):
         return list(self.cars.keys())
     def get_parked_history(self):
@@ -66,12 +64,11 @@ class ParkingLot:
         seconds = random.randint(0, 59)
         return f"{hours:02}:{minutes:02}:{seconds:02}"
     def generate_random_cars_out(self, num_cars):
-        # Function to generate random carsOut data
         car = {}
         for i in range(1, num_cars + 1):
             hours, minutes, seconds = map(int, self.generate_random_duration().split(":"))
             expiration_time = datetime.now() + timedelta(hours=hours, minutes=minutes, seconds=seconds)
-            license_plate = self.generate_random_license_plate()
+            license_plate = self.generate_random_license_plate() + "_$"
             remaining_time = self.generate_random_duration()
             overtime = self.generate_random_duration()
 
@@ -83,3 +80,27 @@ class ParkingLot:
             car[license_plate] = car_data
 
         self.carsOut.update(car)
+    def generate_random_cars(self, num_cars):
+        car = {}
+        for i in range(1, num_cars + 1):
+            hours, minutes, seconds = map(int, self.generate_random_duration().split(":"))
+            expiration_time = datetime.now() + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+            license_plate = self.generate_random_license_plate() + "_$"
+            remaining_time = self.generate_random_duration()
+            overtime = self.generate_random_duration()
+
+            car_data = {
+                "expiration_time": expiration_time,
+                "remaining_time": remaining_time,
+                "overtime": overtime
+            }
+            car[license_plate] = car_data
+
+        self.cars.update(car)
+    def remove_Debugcar(self):
+        for i in list(self.cars.keys()):
+            if '_$' in i:
+                del self.cars[i]
+        for i in list(self.carsOut.keys()):
+            if '_$' in i:
+                del self.carsOut[i]
